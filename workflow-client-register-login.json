@@ -1,0 +1,113 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "register",
+        "method": "POST",
+        "responseMode": "onReceived"
+      },
+      "name": "HTTP Register",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const bcrypt = require('bcryptjs');\nconst { nome, email, telefone, senha } = items[0].json.body;\nconst hashed = bcrypt.hashSync(senha, 10);\nreturn [{ json: { nome, email, telefone, senha: hashed } }];"
+      },
+      "name": "Hash Password",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "clientes",
+        "columns": "nome,email,telefone,senha"
+      },
+      "name": "DB Insert",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "path": "login",
+        "method": "POST",
+        "responseMode": "onReceived"
+      },
+      "name": "HTTP Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": "clientes",
+        "columns": "email,senha",
+        "where": "email = {{$json[\"body\"][\"email\"]}}"
+      },
+      "name": "DB Select",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [440, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "const bcrypt = require('bcryptjs');\nconst senhaInformada = items[0].json.body.senha;\nconst senhaSalva = items[0].json.senha;\nif (bcrypt.compareSync(senhaInformada, senhaSalva)) {\n  return [{ json: { success: true } }];\n} else {\n  return [{ json: { success: false } }];\n}"
+      },
+      "name": "Compare Password",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [640, 500]
+    }
+  ],
+  "connections": {
+    "HTTP Register": {
+      "main": [
+        [
+          {
+            "node": "Hash Password",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash Password": {
+      "main": [
+        [
+          {
+            "node": "DB Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Login": {
+      "main": [
+        [
+          {
+            "node": "DB Select",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB Select": {
+      "main": [
+        [
+          {
+            "node": "Compare Password",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
